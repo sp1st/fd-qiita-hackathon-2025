@@ -15,8 +15,9 @@ export class DrizzleWorkerRepository implements WorkerRepository {
       .select()
       .from(workers)
       .where(eq(workers.id, id))
-      .get()
-    return result || null
+      .limit(1)
+      .all()
+    return result[0] || null
   }
 
   async findAll(_options?: FindOptions): Promise<Worker[]> {
@@ -31,12 +32,12 @@ export class DrizzleWorkerRepository implements WorkerRepository {
       .insert(workers)
       .values(data)
       .returning()
-      .get()
+      .all()
     
-    if (!result) {
+    if (!result[0]) {
       throw new Error('Failed to create worker')
     }
-    return result
+    return result[0]
   }
 
   async update(id: number, data: Partial<Worker>): Promise<Worker | null> {
@@ -48,9 +49,9 @@ export class DrizzleWorkerRepository implements WorkerRepository {
       })
       .where(eq(workers.id, id))
       .returning()
-      .get()
+      .all()
     
-    return result || null
+    return result[0] || null
   }
 
   async delete(id: number): Promise<boolean> {
@@ -58,9 +59,9 @@ export class DrizzleWorkerRepository implements WorkerRepository {
       .delete(workers)
       .where(eq(workers.id, id))
       .returning()
-      .get()
+      .all()
     
-    return !!result
+    return result.length > 0
   }
 
   async findByEmail(email: string): Promise<Worker | null> {
@@ -68,8 +69,9 @@ export class DrizzleWorkerRepository implements WorkerRepository {
       .select()
       .from(workers)
       .where(eq(workers.email, email))
-      .get()
-    return result || null
+      .limit(1)
+      .all()
+    return result[0] || null
   }
 
   async findByRole(role: Worker['role']): Promise<Worker[]> {
@@ -100,11 +102,12 @@ export class DrizzleWorkerRepository implements WorkerRepository {
         and(
           eq(workers.role, 'doctor'),
           eq(workers.isActive, true),
-          sql`date(${workerSchedules.startTime}) = date(${date.toISOString()})`
+          eq(workerSchedules.status, 'available'),
+          sql`date(${workerSchedules.scheduleDate}) = date(${date})`
         )
       )
       .all()
 
-    return availableDoctors.map(result => result.workers)
+    return availableDoctors
   }
 }

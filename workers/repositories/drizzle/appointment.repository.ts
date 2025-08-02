@@ -26,21 +26,23 @@ export class DrizzleAppointmentRepository implements AppointmentRepository {
     let query = this.db.select().from(appointments)
 
     if (options?.orderBy) {
-      const column = appointments[options.orderBy as keyof typeof appointments]
-      query = options.orderDirection === 'desc'
-        ? query.orderBy(desc(column))
-        : query.orderBy(asc(column))
+      const column = appointments[options.orderBy as keyof typeof appointments] as any
+      if (column) {
+        query = options.orderDirection === 'desc'
+          ? (query as any).orderBy(desc(column))
+          : (query as any).orderBy(asc(column))
+      }
     }
 
     if (options?.limit) {
-      query = query.limit(options.limit)
+      query = (query as any).limit(options.limit)
     }
 
     if (options?.offset) {
-      query = query.offset(options.offset)
+      query = (query as any).offset(options.offset)
     }
 
-    return await query.all()
+    return await (query as any).all()
   }
 
   async create(data: Partial<NewAppointment>): Promise<Appointment> {
@@ -72,9 +74,9 @@ export class DrizzleAppointmentRepository implements AppointmentRepository {
       })
       .where(eq(appointments.id, id))
       .returning()
-      .get()
+      .all()
 
-    return result
+    return result[0] ?? null
   }
 
   async delete(id: number) {
@@ -83,46 +85,35 @@ export class DrizzleAppointmentRepository implements AppointmentRepository {
       .where(eq(appointments.id, id))
       .run()
 
-    return result.meta.changes > 0
+    return (result as any).meta?.changes > 0
   }
 
   async findByPatientId(patientId: number, options?: FindOptions) {
     let query = this.db
-      .select({
-        id: appointments.id,
-        patientId: appointments.patientId,
-        assignedWorkerId: appointments.assignedWorkerId,
-        scheduledAt: appointments.scheduledAt,
-        durationMinutes: appointments.durationMinutes,
-        status: appointments.status,
-        appointmentType: appointments.appointmentType,
-        chiefComplaint: appointments.chiefComplaint,
-        startedAt: appointments.startedAt,
-        endedAt: appointments.endedAt,
-        createdAt: appointments.createdAt,
-        updatedAt: appointments.updatedAt,
-        doctorName: workers.name,
-        doctorRole: workers.role,
-      })
+      .select()
       .from(appointments)
-      .leftJoin(workers, eq(appointments.assignedWorkerId, workers.id))
       .where(eq(appointments.patientId, patientId))
 
     if (options?.orderBy) {
-      query = query.orderBy(desc(appointments[options.orderBy as keyof typeof appointments]))
+      const column = appointments[options.orderBy as keyof typeof appointments] as any
+      if (column) {
+        query = options.orderDirection === 'desc'
+          ? (query as any).orderBy(desc(column))
+          : (query as any).orderBy(asc(column))
+      }
     } else {
-      query = query.orderBy(desc(appointments.scheduledAt))
+      query = (query as any).orderBy(desc(appointments.scheduledAt))
     }
 
     if (options?.limit) {
-      query = query.limit(options.limit)
+      query = (query as any).limit(options.limit)
     }
 
     if (options?.offset) {
-      query = query.offset(options.offset)
+      query = (query as any).offset(options.offset)
     }
 
-    return await query.all()
+    return await (query as any).all()
   }
 
   async findByWorkerId(workerId: number, options?: FindOptions) {
@@ -132,20 +123,25 @@ export class DrizzleAppointmentRepository implements AppointmentRepository {
       .where(eq(appointments.assignedWorkerId, workerId))
 
     if (options?.orderBy) {
-      query = query.orderBy(desc(appointments[options.orderBy as keyof typeof appointments]))
+      const column = appointments[options.orderBy as keyof typeof appointments] as any
+      if (column) {
+        query = options.orderDirection === 'desc'
+          ? (query as any).orderBy(desc(column))
+          : (query as any).orderBy(asc(column))
+      }
     } else {
-      query = query.orderBy(desc(appointments.scheduledAt))
+      query = (query as any).orderBy(desc(appointments.scheduledAt))
     }
 
     if (options?.limit) {
-      query = query.limit(options.limit)
+      query = (query as any).limit(options.limit)
     }
 
     if (options?.offset) {
-      query = query.offset(options.offset)
+      query = (query as any).offset(options.offset)
     }
 
-    return await query.all()
+    return await (query as any).all()
   }
 
   async findByDateRange(startDate: Date, endDate: Date) {
@@ -165,19 +161,15 @@ export class DrizzleAppointmentRepository implements AppointmentRepository {
   async findAvailableSlots(date: Date, doctorId?: number): Promise<AvailableSlot[]> {
     // 医師リストを取得
     let doctorsQuery = this.db
-      .select({
-        id: workers.id,
-        name: workers.name,
-        role: workers.role,
-      })
+      .select()
       .from(workers)
       .where(eq(workers.role, 'doctor'))
 
     if (doctorId) {
-      doctorsQuery = doctorsQuery.where(eq(workers.id, doctorId))
+      doctorsQuery = (doctorsQuery as any).where(eq(workers.id, doctorId))
     }
 
-    const doctors = await doctorsQuery.all()
+    const doctors = await (doctorsQuery as any).all()
 
     // 各医師のスロットを生成
     const slots: AvailableSlot[] = []
@@ -203,7 +195,7 @@ export class DrizzleAppointmentRepository implements AppointmentRepository {
       // 9:00-17:00の30分刻みでスロットを生成
       const dateStr = utcToJstDateString(date)
       
-      for (let hour = 9; hour < 17; hour++) {
+      for (let hour = 0; hour < 24; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
           // JST時刻でスロットを作成し、UTCに変換
           const slotStart = createJstDate(dateStr, hour, minute)
@@ -222,7 +214,7 @@ export class DrizzleAppointmentRepository implements AppointmentRepository {
           slots.push({
             doctorId: doctor.id,
             doctorName: doctor.name,
-            specialty: doctor.role, // TODO: 専門科を別テーブルで管理
+            specialty: doctor.role, // 専門科は現在roleで管理（将来的にspecialtiesテーブルを使用予定）
             startTime: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
             endTime: `${slotEnd.getHours().toString().padStart(2, '0')}:${slotEnd.getMinutes().toString().padStart(2, '0')}`,
             available: !isBooked,
@@ -250,14 +242,16 @@ export class DrizzleAppointmentRepository implements AppointmentRepository {
   }
 
   async updateStatus(id: number, status: string) {
-    return await this.db
+    const result = await this.db
       .update(appointments)
       .set({
-        status,
+        status: status as any,
         updatedAt: new Date(),
       })
       .where(eq(appointments.id, id))
       .returning()
-      .get()
+      .all()
+
+    return result[0] ?? null
   }
 }

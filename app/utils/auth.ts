@@ -13,6 +13,11 @@ export const AUTH_TOKEN_KEYS = {
  * 現在のパスに基づいて適切な認証トークンを取得
  */
 export function getAuthToken(pathname?: string): string | null {
+  // サーバーサイドではwindowが利用できない
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
   const currentPath = pathname || window.location.pathname;
 
   if (currentPath.startsWith('/patient')) {
@@ -36,6 +41,9 @@ export function getAuthToken(pathname?: string): string | null {
  * ワーカー（医療従事者）の認証トークンを取得
  */
 export function getWorkerAuthToken(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
   return localStorage.getItem(AUTH_TOKEN_KEYS.WORKER);
 }
 
@@ -43,6 +51,9 @@ export function getWorkerAuthToken(): string | null {
  * 患者の認証トークンを取得
  */
 export function getPatientAuthToken(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
   return localStorage.getItem(AUTH_TOKEN_KEYS.PATIENT);
 }
 
@@ -55,6 +66,15 @@ export function getAuthTokenStatus(): {
   currentPath: string;
   detectedUserType: 'patient' | 'worker' | 'unknown';
 } {
+  if (typeof window === 'undefined') {
+    return {
+      patientToken: false,
+      workerToken: false,
+      currentPath: '',
+      detectedUserType: 'unknown'
+    };
+  }
+
   const currentPath = window.location.pathname;
   let detectedUserType: 'patient' | 'worker' | 'unknown' = 'unknown';
 
@@ -76,6 +96,10 @@ export function getAuthTokenStatus(): {
  * 現在のパスに基づいて適切なユーザー情報を取得
  */
 export function getCurrentUser(pathname?: string): any | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
   const currentPath = pathname || window.location.pathname;
 
   if (currentPath.startsWith('/patient')) {

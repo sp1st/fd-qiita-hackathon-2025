@@ -13,6 +13,7 @@ export default [
     route('appointments', 'routes/patient/appointments.tsx'),
     route('appointments/new', 'routes/patient/appointments/new.tsx'),
     route('appointments/:id/questionnaire', 'routes/patient/appointments/$id.questionnaire.tsx'),
+    route('appointments/:id/support-chat', 'routes/patient/appointments/$id.support-chat.tsx'),
     route('consultation/:id', 'routes/patient/consultation/$id.tsx'),
     route('messages', 'routes/patient/messages.tsx'),
     route('prescriptions', 'routes/patient.prescriptions.tsx'),
@@ -26,6 +27,7 @@ export default [
       route('schedule', 'routes/worker.doctor.schedule.tsx'),
       route('consultation/:id', 'routes/worker/doctor/consultation/$id.tsx'),
       route('patients', 'routes/worker/doctor/patients.tsx'),
+      route('medical-records', 'routes/worker/doctor/medical-records.tsx'),
       route('medical-records/:id/edit', 'routes/worker/doctor/medical-records/$id.edit.tsx'),
     ]),
 

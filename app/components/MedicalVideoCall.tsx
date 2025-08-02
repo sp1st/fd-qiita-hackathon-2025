@@ -201,8 +201,9 @@ export function MedicalVideoCall({
         <button
           className="fixed bottom-4 right-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2"
           onClick={() => {
-            // TODO: サポートチャットを開く
-            console.info('Opening support chat');
+            // サポートチャットを開く
+            const supportChatUrl = `/patient/appointments/${appointmentId}/support-chat`;
+            window.open(supportChatUrl, '_blank', 'width=400,height=600,scrollbars=yes,resizable=yes');
           }}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

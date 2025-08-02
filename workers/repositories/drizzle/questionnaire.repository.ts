@@ -10,11 +10,14 @@ export class DrizzleQuestionnaireRepository implements QuestionnaireRepository {
   constructor(private db: Database) {}
 
   async findById(id: number) {
-    return await this.db
+    const result = await this.db
       .select()
       .from(questionnaires)
       .where(eq(questionnaires.id, id))
-      .get()
+      .limit(1)
+      .all()
+    
+    return result[0] || null
   }
 
   async findAll(options?: FindOptions) {
@@ -40,9 +43,9 @@ export class DrizzleQuestionnaireRepository implements QuestionnaireRepository {
         updatedAt: new Date(),
       })
       .returning()
-      .get()
+      .all()
     
-    return result
+    return result[0]!
   }
 
   async update(id: number, data: Partial<typeof questionnaires.$inferInsert>) {
@@ -54,9 +57,9 @@ export class DrizzleQuestionnaireRepository implements QuestionnaireRepository {
       })
       .where(eq(questionnaires.id, id))
       .returning()
-      .get()
+      .all()
     
-    return result
+    return result[0] || null
   }
 
   async delete(id: number) {
@@ -69,11 +72,14 @@ export class DrizzleQuestionnaireRepository implements QuestionnaireRepository {
   }
 
   async findByAppointmentId(appointmentId: number) {
-    return await this.db
+    const result = await this.db
       .select()
       .from(questionnaires)
       .where(eq(questionnaires.appointmentId, appointmentId))
-      .get()
+      .limit(1)
+      .all()
+    
+    return result[0] || null
   }
 
   async updateAnswers(id: number, answers: Record<string, any>) {
@@ -86,7 +92,7 @@ export class DrizzleQuestionnaireRepository implements QuestionnaireRepository {
     const currentAnswers = existing.answers ? JSON.parse(existing.answers) : {}
     const updatedAnswers = { ...currentAnswers, ...answers }
 
-    return await this.db
+    const result = await this.db
       .update(questionnaires)
       .set({
         answers: JSON.stringify(updatedAnswers),
@@ -94,18 +100,23 @@ export class DrizzleQuestionnaireRepository implements QuestionnaireRepository {
       })
       .where(eq(questionnaires.id, id))
       .returning()
-      .get()
+      .all()
+    
+    return result[0] || null
   }
 
   async markAsCompleted(id: number) {
-    return await this.db
+    const result = await this.db
       .update(questionnaires)
       .set({
+        isCompleted: true,
         completedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(questionnaires.id, id))
       .returning()
-      .get()
+      .all()
+    
+    return result[0] || null
   }
 }

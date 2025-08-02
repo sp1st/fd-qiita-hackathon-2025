@@ -14,12 +14,11 @@ import type {
 import { DrizzlePatientRepository } from './patient.repository'
 import { DrizzleAppointmentRepository } from './appointment.repository'
 import { DrizzleQuestionnaireRepository } from './questionnaire.repository'
-
 import { DrizzleWorkerRepository } from './worker.repository'
 import { DrizzleWorkerScheduleRepository } from './worker-schedule.repository'
 import { DrizzleChatMessageRepository } from './chat-message.repository'
 import { DrizzleVideoSessionRepository } from './video-session.repository'
-
+import { DrizzleMedicalRecordRepository } from './medical-record.repository'
 
 type Database = DrizzleD1Database | LibSQLDatabase
 
@@ -43,11 +42,8 @@ export class DrizzleRepositoryFactory implements RepositoryFactory {
   }
 
   createMedicalRecordRepository(): MedicalRecordRepository {
-    // TODO: 実装
-    throw new Error('MedicalRecordRepository not implemented yet')
+    return new DrizzleMedicalRecordRepository(this.db)
   }
-
-
 
   createVideoSessionRepository(): VideoSessionRepository {
     return new DrizzleVideoSessionRepository(this.db)

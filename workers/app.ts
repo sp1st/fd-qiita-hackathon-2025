@@ -11,8 +11,9 @@ import { shouldIgnorePath } from './config/ignored-paths';
 if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
   dotenv.config({ path: '.env.local' });
 }
-import { patients, workers, appointments, videoSessions, medicalRecords, questionnaires } from './db/schema';
-import { eq, and, gte, lt, desc, or, isNotNull, min, sql, type SQL } from 'drizzle-orm';
+import { patients, workers, appointments, videoSessions, medicalRecords, questionnaires, workerSchedules } from './db/schema';
+import { eq, and, gte, lt, desc, or, isNotNull, type SQL } from 'drizzle-orm';
+import { jstDateToUtc } from './utils/timezone';
 
 // 認証関連のインポート
 import { verifyPassword } from './auth/password';
@@ -579,29 +580,33 @@ api.get('/worker/appointments/today', async (c) => {
     return c.json({ error: 'Unauthorized' }, 401);
   }
 
-  // TODO: 実際の appointments テーブルから取得
-  const mockTodayAppointments = [
-    {
-      id: 1,
-      patientId: 1,
-      patientName: '山田太郎',
-      scheduledAt: new Date().toISOString(),
-      status: 'scheduled',
-      chiefComplaint: '風邪の症状',
-      appointmentType: 'general',
-    },
-    {
-      id: 2,
-      patientId: 2,
-      patientName: '佐藤花子',
-      scheduledAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-      status: 'waiting',
-      chiefComplaint: '頭痛',
-      appointmentType: 'general',
-    },
-  ];
+  const db = initializeDatabase(c.env);
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
 
-  return c.json(mockTodayAppointments);
+  try {
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    const todayAppointments = await db
+      .select()
+      .from(appointments)
+      .innerJoin(patients, eq(appointments.patientId, patients.id))
+      .where(
+        and(
+          gte(appointments.scheduledAt, startOfDay),
+          lt(appointments.scheduledAt, endOfDay)
+        )
+      )
+      .all();
+
+    return c.json(todayAppointments);
+  } catch (error) {
+    console.error('Error fetching today appointments:', error);
+    return c.json({ error: 'Failed to fetch appointments' }, 500);
+  }
 });
 
 api.get('/worker/appointments/waiting', async (c) => {
@@ -610,31 +615,24 @@ api.get('/worker/appointments/waiting', async (c) => {
     return c.json({ error: 'Unauthorized' }, 401);
   }
 
-  // TODO: 実際の appointments テーブルから取得
-  const mockWaitingAppointments = [
-    {
-      id: 2,
-      patientId: 2,
-      patientName: '佐藤花子',
-      scheduledAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-      status: 'waiting',
-      chiefComplaint: '頭痛',
-      appointmentType: 'general',
-      waitingSince: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 3,
-      patientId: 3,
-      patientName: '田中太郎',
-      scheduledAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-      status: 'waiting',
-      chiefComplaint: '腹痛',
-      appointmentType: 'urgent',
-      waitingSince: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-    },
-  ];
+  const db = initializeDatabase(c.env);
+  if (!db) {
+    return c.json({ error: 'Database not available' }, 500);
+  }
 
-  return c.json(mockWaitingAppointments);
+  try {
+    const waitingAppointments = await db
+      .select()
+      .from(appointments)
+      .innerJoin(patients, eq(appointments.patientId, patients.id))
+      .where(eq(appointments.status, 'waiting'))
+      .all();
+
+    return c.json(waitingAppointments);
+  } catch (error) {
+    console.error('Error fetching waiting appointments:', error);
+    return c.json({ error: 'Failed to fetch waiting appointments' }, 500);
+  }
 });
 
 // 予約詳細エンドポイント（医療従事者用）
@@ -657,9 +655,9 @@ api.get('/worker/appointments/:id/details', authMiddleware(), async (c) => {
     const appointmentResult = await db.select().from(appointments)
       .where(eq(appointments.id, parseInt(appointmentId)))
       .limit(1)
-      .get();
+      .all();
 
-    const appointment = appointmentResult;
+    const appointment = appointmentResult[0];
 
     if (!appointment) {
       return c.json({ error: 'Appointment not found' }, 404);
@@ -669,9 +667,9 @@ api.get('/worker/appointments/:id/details', authMiddleware(), async (c) => {
     const patientResult = await db.select().from(patients)
       .where(eq(patients.id, appointment.patientId))
       .limit(1)
-      .get();
+      .all();
 
-    const patient = patientResult;
+    const patient = patientResult[0];
 
     if (!patient) {
       return c.json({ error: 'Patient not found' }, 404);
@@ -683,8 +681,8 @@ api.get('/worker/appointments/:id/details', authMiddleware(), async (c) => {
       const doctorResult = await db.select().from(workers)
         .where(eq(workers.id, appointment.assignedWorkerId))
         .limit(1)
-        .get();
-      doctor = doctorResult || null;
+        .all();
+      doctor = doctorResult[0] || null;
     }
 
     return c.json({
@@ -802,7 +800,7 @@ api.get('/patient/appointments', authMiddleware(), async (c) => {
     if (status && ['scheduled', 'waiting', 'assigned', 'in_progress', 'completed', 'cancelled'].includes(status)) {
       whereConditions = and(
         whereConditions,
-        eq(appointments.status, status as any)
+        eq(appointments.status, status as 'scheduled' | 'waiting' | 'assigned' | 'in_progress' | 'completed' | 'cancelled')
       );
     }
 
@@ -819,12 +817,12 @@ api.get('/patient/appointments', authMiddleware(), async (c) => {
 
     // 総数を取得（型安全なcount実装）
     const countResult = await db
-      .select({ count: sql<number>`count(*)` })
+      .select()
       .from(appointments)
       .where(whereConditions)
       .all();
 
-    const totalCount = countResult[0]?.count ?? 0;
+    const totalCount = countResult.length;
     const totalPages = Math.ceil(totalCount / limit);
 
     return c.json({
@@ -857,7 +855,7 @@ api.get('/patient/appointments', authMiddleware(), async (c) => {
   }
 });
 
-// 利用可能なスロット取得
+// 空き時間取得
 api.get('/patient/appointments/available-slots', authMiddleware(), async (c) => {
   try {
     const user = c.get('user');
@@ -869,7 +867,7 @@ api.get('/patient/appointments/available-slots', authMiddleware(), async (c) => 
     const _specialty = c.req.query('specialty');
 
     if (!date) {
-      return c.json({ error: '日付パラメータが必要です' }, 400);
+      return c.json({ error: 'Date parameter is required' }, 400);
     }
 
     const db = initializeDatabase(c.env);
@@ -877,50 +875,106 @@ api.get('/patient/appointments/available-slots', authMiddleware(), async (c) => 
       return c.json({ error: 'Database not available' }, 500);
     }
 
-    // TODO: 実際のスロット計算ロジックを実装
-    // 現時点では簡易的な実装
-    const _targetDate = new Date(date);
+    // 日付をUTCに変換
+    const targetDate = jstDateToUtc(date);
     const slots = [];
 
-    // 医師のスケジュール情報を取得（簡易実装）
+    // 医師一覧を取得
     const doctors = await db
-      .select({
-        id: workers.id,
-        name: workers.name,
-        role: workers.role, // TODO: 専門科を別テーブルで管理
-      })
+      .select()
       .from(workers)
       .where(eq(workers.role, 'doctor'))
       .all();
 
     for (const doctor of doctors) {
       const doctorSlots = [];
-      // 9:00-17:00の30分刻みでスロットを生成
-      for (let hour = 9; hour < 17; hour++) {
-        for (let minute = 0; minute < 60; minute += 30) {
-          const startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          const endHour = minute === 30 ? hour + 1 : hour;
-          const endMinute = minute === 30 ? 0 : 30;
-          const endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+      
+      // 医師のスケジュールを取得
+      const doctorSchedule = await db
+        .select()
+        .from(workerSchedules)
+        .where(
+          and(
+            eq(workerSchedules.workerId, doctor.id),
+            eq(workerSchedules.scheduleDate, targetDate),
+            eq(workerSchedules.status, 'available')
+          )
+        )
+        .all();
 
-          // 既存の予約をチェック（簡易実装）
-          const isBooked = false; // TODO: 実際の予約チェック
+      // 医師のスケジュールに基づいてスロットを生成
+      for (const schedule of doctorSchedule) {
+        const startTime = schedule.startTime;
+        const endTime = schedule.endTime;
+        
+        // 開始時間と終了時間を30分刻みで分割
+        const startHour = parseInt(startTime.split(':')[0]);
+        const startMinute = parseInt(startTime.split(':')[1]);
+        const endHour = parseInt(endTime.split(':')[0]);
+        const endMinute = parseInt(endTime.split(':')[1]);
+        
+        // 開始時間から終了時間まで30分刻みでスロットを生成
+        for (let hour = startHour; hour < endHour || (hour === endHour && startMinute < endMinute); hour++) {
+          for (let minute = 0; minute < 60; minute += 30) {
+            // スケジュールの開始時間より前はスキップ
+            if (hour === startHour && minute < startMinute) {
+              continue;
+            }
+            
+            // スケジュールの終了時間を超えたら終了
+            if (hour === endHour && minute >= endMinute) {
+              break;
+            }
+            
+            const slotStartTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            const slotEndHour = minute === 30 ? hour + 1 : hour;
+            const slotEndMinute = minute === 30 ? 0 : 30;
+            const slotEndTime = `${slotEndHour.toString().padStart(2, '0')}:${slotEndMinute.toString().padStart(2, '0')}`;
+            
+            // スロットの終了時間がスケジュールの終了時間を超えないかチェック
+            if (slotEndHour > endHour || (slotEndHour === endHour && slotEndMinute > endMinute)) {
+              break;
+            }
 
-          doctorSlots.push({
-            startTime,
-            endTime,
-            available: !isBooked,
-          });
+            // 既存の予約をチェック
+            const scheduledAt = new Date(`${date} ${slotStartTime}`);
+            const existingAppointments = await db
+              .select()
+              .from(appointments)
+              .where(
+                and(
+                  eq(appointments.assignedWorkerId, doctor.id),
+                  eq(appointments.scheduledAt, scheduledAt),
+                  or(
+                    eq(appointments.status, 'scheduled'),
+                    eq(appointments.status, 'waiting'),
+                    eq(appointments.status, 'assigned')
+                  )
+                )
+              )
+              .all();
+
+            const isBooked = existingAppointments.length > 0;
+
+            doctorSlots.push({
+              startTime: slotStartTime,
+              endTime: slotEndTime,
+              available: !isBooked,
+            });
+          }
         }
       }
 
-      slots.push({
-        date: date,
-        doctorId: doctor.id,
-        doctorName: doctor.name,
-        specialty: doctor.role, // role をspecialtyとして使用
-        timeSlots: doctorSlots,
-      });
+      // スロットが存在する場合のみ追加
+      if (doctorSlots.length > 0) {
+        slots.push({
+          date: date,
+          doctorId: doctor.id,
+          doctorName: doctor.name,
+          specialty: doctor.role,
+          timeSlots: doctorSlots,
+        });
+      }
     }
 
     return c.json({ slots });
@@ -1813,10 +1867,7 @@ api.get('/worker/operator/assignment-board', authMiddleware(), async (c) => {
 
     // 待機中の患者取得
     const waitingPatientsList = await db
-      .select({
-        appointment: appointments,
-        patient: patients,
-      })
+      .select()
       .from(appointments)
       .innerJoin(patients, eq(appointments.patientId, patients.id))
       .where(
@@ -1830,10 +1881,7 @@ api.get('/worker/operator/assignment-board', authMiddleware(), async (c) => {
 
     // 割り当て済みの予約取得
     const assignedAppointments = await db
-      .select({
-        appointment: appointments,
-        patient: patients,
-      })
+      .select()
       .from(appointments)
       .innerJoin(patients, eq(appointments.patientId, patients.id))
       .where(
@@ -1858,9 +1906,9 @@ api.get('/worker/operator/assignment-board', authMiddleware(), async (c) => {
     }
 
     // 医師ごとの割り当て整理
-    const assignments = assignedAppointments.reduce((acc, { appointment, patient }) => {
-      const doctorId = appointment.assignedWorkerId!;
-      const timeSlot = new Date(appointment.scheduledAt).toLocaleTimeString('ja-JP', {
+    const assignments = assignedAppointments.reduce((acc, row) => {
+      const doctorId = row.appointments.assignedWorkerId!;
+      const timeSlot = new Date(row.appointments.scheduledAt).toLocaleTimeString('ja-JP', {
         hour: '2-digit',
         minute: '2-digit',
       });
@@ -1870,15 +1918,21 @@ api.get('/worker/operator/assignment-board', authMiddleware(), async (c) => {
       }
 
       acc[doctorId][timeSlot] = {
-        appointmentId: appointment.id,
-        patientName: patient.name,
-        chiefComplaint: appointment.chiefComplaint,
-        status: appointment.status,
-        duration: appointment.durationMinutes,
+        appointmentId: row.appointments.id,
+        patientName: row.patients.name,
+        chiefComplaint: row.appointments.chiefComplaint,
+        status: row.appointments.status,
+        duration: row.appointments.durationMinutes,
       };
 
       return acc;
-    }, {} as Record<number, Record<string, any>>);
+    }, {} as Record<number, Record<string, {
+      appointmentId: number;
+      patientName: string;
+      chiefComplaint: string | null;
+      status: string;
+      duration: number | null;
+    }>>);
 
     return c.json({
       date: targetDate.toISOString().split('T')[0],
@@ -1888,16 +1942,16 @@ api.get('/worker/operator/assignment-board', authMiddleware(), async (c) => {
         specialties: [], // specialtiesフィールドがないため空配列
         isActive: doctor.isActive,
       })),
-      waitingPatients: waitingPatientsList.map(({ appointment, patient }) => ({
-        appointmentId: appointment.id,
+      waitingPatients: waitingPatientsList.map((row) => ({
+        appointmentId: row.appointments.id,
         patient: {
-          id: patient.id,
-          name: patient.name,
+          id: row.patients.id,
+          name: row.patients.name,
         },
-        chiefComplaint: appointment.chiefComplaint,
-        appointmentType: appointment.appointmentType,
-        priority: appointment.priority || 'normal',
-        requestedAt: appointment.scheduledAt,
+        chiefComplaint: row.appointments.chiefComplaint,
+        appointmentType: row.appointments.appointmentType,
+        priority: 'normal',
+        requestedAt: row.appointments.scheduledAt,
       })),
       assignments,
       timeSlots,
@@ -2025,8 +2079,7 @@ api.post('/video-sessions/create', authMiddleware(), async (c) => {
       dbKeys: Object.keys(db)
     });
 
-    const videoSessionManager = new VideoSessionManager(db, callsClient);
-
+    const videoSessionManager = new VideoSessionManager(db as any, callsClient);
     // セッション作成
     try {
       const result = await videoSessionManager.createSession(appointmentId, user);
@@ -2232,6 +2285,139 @@ app.route('/api/websocket-signaling', webSocketSignalingApp);
 app.route('/api/ws', wsSimpleApp); // シンプルなWebSocket実装
 app.route('/api', turnApi); // Cloudflare TURN認証情報
 
+// カルテ管理API
+api.get('/worker/doctor/medical-records', authMiddleware(), async (c) => {
+  try {
+    const user = c.get('user');
+
+    // 医師のみアクセス可能
+    if (user.userType !== 'worker' || user.role !== 'doctor') {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+
+    const db = initializeDatabase(c.env);
+    if (!db) {
+      return c.json({ error: 'Database not available' }, 500);
+    }
+
+    // 医師の予約に関連するカルテを取得
+    const records = await db
+      .select()
+      .from(medicalRecords)
+      .innerJoin(appointments, eq(medicalRecords.appointmentId, appointments.id))
+      .where(eq(appointments.assignedWorkerId, user.id))
+      .all();
+
+    return c.json({
+      medicalRecords: records.map(record => ({
+        id: record.medical_records.id,
+        appointmentId: record.medical_records.appointmentId,
+        subjective: record.medical_records.subjective,
+        objective: record.medical_records.objective,
+        assessment: record.medical_records.assessment,
+        plan: record.medical_records.plan,
+        vitalSigns: record.medical_records.vitalSigns,
+        prescriptions: record.medical_records.prescriptions,
+        aiSummary: record.medical_records.aiSummary,
+        createdAt: record.medical_records.createdAt,
+        updatedAt: record.medical_records.updatedAt,
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching medical records:', error);
+    return c.json({ error: 'Failed to fetch medical records' }, 500);
+  }
+});
+
+// カルテ作成API
+api.post('/worker/doctor/medical-records', authMiddleware(), async (c) => {
+  try {
+    const user = c.get('user');
+    const { appointmentId, subjective, objective, assessment, plan, vitalSigns, prescriptions, aiSummary } = await c.req.json();
+
+    // 医師のみアクセス可能
+    if (user.userType !== 'worker' || user.role !== 'doctor') {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+
+    const db = initializeDatabase(c.env);
+    if (!db) {
+      return c.json({ error: 'Database not available' }, 500);
+    }
+
+    // カルテを作成
+    const newRecord = await db
+      .insert(medicalRecords)
+      .values({
+        appointmentId,
+        subjective,
+        objective,
+        assessment,
+        plan,
+        vitalSigns: vitalSigns || '{}',
+        prescriptions: prescriptions || '[]',
+        aiSummary: aiSummary || '{}',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+      .all();
+
+    return c.json({
+      medicalRecord: newRecord[0]
+    });
+  } catch (error) {
+    console.error('Error creating medical record:', error);
+    return c.json({ error: 'Failed to create medical record' }, 500);
+  }
+});
+
+// カルテ更新API
+api.put('/worker/doctor/medical-records/:id', authMiddleware(), async (c) => {
+  try {
+    const user = c.get('user');
+    const recordId = parseInt(c.req.param('id'));
+    const { subjective, objective, assessment, plan, vitalSigns, prescriptions, aiSummary } = await c.req.json();
+
+    // 医師のみアクセス可能
+    if (user.userType !== 'worker' || user.role !== 'doctor') {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+
+    const db = initializeDatabase(c.env);
+    if (!db) {
+      return c.json({ error: 'Database not available' }, 500);
+    }
+
+    // カルテを更新
+    const updatedRecord = await db
+      .update(medicalRecords)
+      .set({
+        subjective,
+        objective,
+        assessment,
+        plan,
+        vitalSigns: vitalSigns || '{}',
+        prescriptions: prescriptions || '[]',
+        aiSummary: aiSummary || '{}',
+        updatedAt: new Date(),
+      })
+      .where(eq(medicalRecords.id, recordId))
+      .returning()
+      .all();
+
+    if (updatedRecord.length === 0) {
+      return c.json({ error: 'Medical record not found' }, 404);
+    }
+
+    return c.json({
+      medicalRecord: updatedRecord[0]
+    });
+  } catch (error) {
+    console.error('Error updating medical record:', error);
+    return c.json({ error: 'Failed to update medical record' }, 500);
+  }
+});
 
 // React Router統合（フロントエンド）- APIパス以外のすべて
 app.all('*', async (c) => {
