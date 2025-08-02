@@ -62,18 +62,13 @@ app.get('/:appointmentId', authMiddleware(), async (c) => {
   try {
     const user = c.get('user') as JWTPayload
     const appointmentId = parseInt(c.req.param('appointmentId'))
-    const db = initializeDatabase(c.env)
-
-    if (!db) {
-      return c.json({ error: 'Database not available' }, 500)
-    }
 
     // 患者のみアクセス可能
     if (user.userType !== 'patient') {
       return c.json({ error: 'Patients only' }, 403)
     }
 
-    const factory = new DrizzleRepositoryFactory(db)
+    const factory = new DrizzleRepositoryFactory(c.env.DB)
     const appointmentRepo = factory.createAppointmentRepository()
     const questionnaireRepo = factory.createQuestionnaireRepository()
 
@@ -134,12 +129,7 @@ app.post('/answer', authMiddleware(), async (c) => {
       return c.json({ error: '必須フィールドが不足しています' }, 400)
     }
 
-    const db = initializeDatabase(c.env)
-    if (!db) {
-      return c.json({ error: 'Database not available' }, 500)
-    }
-
-    const factory = new DrizzleRepositoryFactory(db)
+    const factory = new DrizzleRepositoryFactory(c.env.DB)
     const appointmentRepo = factory.createAppointmentRepository()
     const questionnaireRepo = factory.createQuestionnaireRepository()
 
@@ -185,12 +175,7 @@ app.post('/complete', authMiddleware(), async (c) => {
       return c.json({ error: 'appointmentIdが必要です' }, 400)
     }
 
-    const db = initializeDatabase(c.env)
-    if (!db) {
-      return c.json({ error: 'Database not available' }, 500)
-    }
-
-    const factory = new DrizzleRepositoryFactory(db)
+    const factory = new DrizzleRepositoryFactory(c.env.DB)
     const appointmentRepo = factory.createAppointmentRepository()
     const questionnaireRepo = factory.createQuestionnaireRepository()
 

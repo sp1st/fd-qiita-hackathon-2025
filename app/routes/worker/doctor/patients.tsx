@@ -1,5 +1,8 @@
-import { type LoaderFunctionArgs } from 'react-router'
-import { useLoaderData, Link } from 'react-router'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router'
+import { useAuth } from '~/contexts/AuthContext'
+import { Loading } from '~/components/common/Loading'
+import { ErrorMessage } from '~/components/common/ErrorMessage'
 
 interface Patient {
   id: number
@@ -10,38 +13,44 @@ interface Patient {
   gender: 'male' | 'female' | 'other' | null
 }
 
-interface LoaderData {
-  patients: Patient[]
-  user: { name: string; role: string }
-  error?: string
-}
-
-export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderData> {
-  // TODO: 認証チェックを実装
-  const user = { name: '山田太郎', role: 'doctor' }
-
-  try {
-    // APIから担当患者一覧を取得
-    const response = await fetch(`${new URL(request.url).origin}/api/worker/doctor/patients`, {
-      headers: {
-        'Authorization': 'Bearer dummy-token', // TODO: 実際の認証トークンを使用
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch patients')
-    }
-
-    const data: { patients: Patient[] } = await response.json()
-    return { patients: data.patients, user }
-  } catch (error) {
-    console.error('Error fetching patients:', error)
-    return { patients: [], user, error: 'データの取得に失敗しました' }
-  }
-}
-
 export default function DoctorPatients() {
-  const { patients, user, error } = useLoaderData<LoaderData>()
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchPatients = async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        navigate('/worker/login');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/worker/doctor/patients', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch patients');
+        }
+
+        const data = await response.json();
+        setPatients(data.patients);
+      } catch (error) {
+        console.error('Error fetching patients:', error);
+        setError('データの取得に失敗しました');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPatients();
+  }, [navigate]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) {return '未設定'}
@@ -57,13 +66,17 @@ export default function DoctorPatients() {
     }
   }
 
+  if (isLoading) {
+    return <Loading />;
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-bold text-gray-900">担当患者一覧</h1>
           <p className="mt-2 text-sm text-gray-700">
-            {user.name}先生が担当している患者の一覧です。
+            {user?.name || '医師'}先生が担当している患者の一覧です。
           </p>
         </div>
       </div>
@@ -113,7 +126,7 @@ export default function DoctorPatients() {
                           <div>
                             <div>{patient.email}</div>
                             {patient.phoneNumber && (
-                              <div className="text-xs text-gray-400">{patient.phoneNumber}</div>
+                              <div className="text-gray-400">{patient.phoneNumber}</div>
                             )}
                           </div>
                         </td>
@@ -123,12 +136,12 @@ export default function DoctorPatients() {
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                           {getGenderLabel(patient.gender)}
                         </td>
-                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                        <td className="relative whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                           <Link
                             to={`/worker/doctor/patients/${patient.id}`}
                             className="text-indigo-600 hover:text-indigo-900"
                           >
-                            詳細表示
+                            詳細を見る
                           </Link>
                         </td>
                       </tr>
@@ -139,12 +152,6 @@ export default function DoctorPatients() {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-500">
-          患者数: {patients.length}名
-        </p>
       </div>
     </div>
   )

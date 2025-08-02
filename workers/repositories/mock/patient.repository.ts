@@ -84,7 +84,7 @@ export class MockPatientRepository implements PatientRepository {
   async getPatientsByDoctorId(doctorId: number): Promise<Patient[]> {
     // この医師が担当した予約から患者IDを取得
     const doctorAppointments = this.appointments.filter(
-      (appointment: any) => appointment.workerId === doctorId
+      (appointment: any) => appointment.assignedWorkerId === doctorId
     )
 
     // 重複を排除して患者IDのリストを作成
@@ -102,7 +102,7 @@ export class MockPatientRepository implements PatientRepository {
     // この医師がこの患者を担当したことがあるかチェック
     const hasAppointment = this.appointments.some(
       (appointment: any) =>
-        appointment.patientId === patientId && appointment.workerId === doctorId
+        appointment.patientId === patientId && appointment.assignedWorkerId === doctorId
     )
 
     if (!hasAppointment) {

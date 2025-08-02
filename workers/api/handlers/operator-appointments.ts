@@ -25,13 +25,75 @@ operatorAppointmentHandlers.get('/', authMiddleware(), async (c: any) => {
 
     console.log('Permission check passed');
 
-    // 一時的にシンプルなレスポンスを返す
+    // リポジトリファクトリーを初期化
+    const repoFactory = new DrizzleRepositoryFactory(c.env.DB);
+    const appointmentRepo = repoFactory.createAppointmentRepository();
+    const patientRepo = repoFactory.createPatientRepository();
+    const workerRepo = repoFactory.createWorkerRepository();
+
+    // クエリパラメータを取得
+    const { status, date, page = 1, limit = 10 } = c.req.query();
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // 予約一覧を取得（モックリポジトリの制限に合わせて）
+    const appointments = await appointmentRepo.findAll({
+      limit: parseInt(limit),
+      offset,
+    });
+
+    // フィルタリングをアプリケーションレベルで実行
+    let filteredAppointments = appointments;
+    
+    if (status) {
+      filteredAppointments = filteredAppointments.filter(apt => apt.status === status);
+    }
+    
+    if (date) {
+      const targetDate = new Date(date);
+      filteredAppointments = filteredAppointments.filter(apt => {
+        const aptDate = new Date(apt.scheduledAt);
+        return aptDate.toDateString() === targetDate.toDateString();
+      });
+    }
+
+    // 患者と医師の情報を取得して予約データを拡張
+    const enrichedAppointments = await Promise.all(
+      filteredAppointments.map(async (appointment) => {
+        const patient = appointment.patientId ? await patientRepo.findById(appointment.patientId) : null;
+        const doctor = appointment.assignedWorkerId ? await workerRepo.findById(appointment.assignedWorkerId) : null;
+
+        return {
+          id: appointment.id,
+          patientId: appointment.patientId,
+          assignedWorkerId: appointment.assignedWorkerId,
+          status: appointment.status,
+          scheduledAt: appointment.scheduledAt,
+          durationMinutes: appointment.durationMinutes,
+          chiefComplaint: appointment.chiefComplaint,
+          appointmentType: appointment.appointmentType,
+          createdAt: appointment.createdAt,
+          updatedAt: appointment.updatedAt,
+          patient: patient ? {
+            id: patient.id,
+            name: patient.name,
+            email: patient.email,
+            phoneNumber: patient.phoneNumber,
+          } : null,
+          doctor: doctor ? {
+            id: doctor.id,
+            name: doctor.name,
+            role: doctor.role,
+          } : null,
+        };
+      })
+    );
+
     return c.json({
-      appointments: [],
+      appointments: enrichedAppointments,
       pagination: {
-        currentPage: 1,
-        totalCount: 0,
-        hasNextPage: false,
+        currentPage: parseInt(page),
+        totalCount: enrichedAppointments.length,
+        hasNextPage: false, // モックでは簡略化
       }
     });
 

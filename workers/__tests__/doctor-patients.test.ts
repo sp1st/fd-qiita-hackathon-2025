@@ -38,9 +38,9 @@ const mockPatients = [
 ];
 
 const mockAppointments = [
-    { id: 1, patientId: 1, workerId: 2, status: 'completed' },
-    { id: 2, patientId: 2, workerId: 2, status: 'completed' },
-    { id: 3, patientId: 1, workerId: 3, status: 'completed' }, // Different doctor
+    { id: 1, patientId: 1, assignedWorkerId: 2, status: 'completed' },
+    { id: 2, patientId: 2, assignedWorkerId: 2, status: 'completed' },
+    { id: 3, patientId: 1, assignedWorkerId: 3, status: 'completed' }, // Different doctor
 ];
 
 
