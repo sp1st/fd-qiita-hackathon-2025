@@ -34,6 +34,7 @@ import patientPrescriptionsHandlers from './api/handlers/patient-prescriptions';
 import doctorPatientHandlers from './api/handlers/doctor-patients';
 import operatorAppointmentHandlers from './api/handlers/operator-appointments';
 import { videoSessionsApp } from './api/video-sessions';
+import smartwatchRouter from './api/smartwatch';
 
 // Cloudflare Realtime関連のインポート
 import { CloudflareCallsClient } from './realtime/calls-client';
@@ -2284,6 +2285,7 @@ app.route('/api/video-sessions', videoSessionsApp);
 app.route('/api/websocket-signaling', webSocketSignalingApp);
 app.route('/api/ws', wsSimpleApp); // シンプルなWebSocket実装
 app.route('/api', turnApi); // Cloudflare TURN認証情報
+app.route('/api/smartwatch', smartwatchRouter); // スマートウォッチ・AI連携機能
 
 // カルテ管理API
 api.get('/worker/doctor/medical-records', authMiddleware(), async (c) => {

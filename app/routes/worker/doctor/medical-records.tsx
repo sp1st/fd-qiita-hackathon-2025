@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '~/contexts/AuthContext';
-import { get, post, put } from '~/utils/api-client';
+import { get } from '~/utils/api-client';
 import { Header } from '~/components/common/Header';
 import { Loading } from '~/components/common/Loading';
 import { ErrorMessage } from '~/components/common/ErrorMessage';
@@ -52,11 +52,11 @@ export default function MedicalRecordsPage() {
       setError(null);
 
       // 医師の予約を取得
-      const appointmentsData = await get('/api/worker/doctor/appointments');
+      const appointmentsData = await get('/api/worker/doctor/appointments') as { appointments: Appointment[] };
       setAppointments(appointmentsData.appointments || []);
 
       // カルテデータを取得（実際のAPIエンドポイントに応じて調整）
-      const recordsData = await get('/api/worker/doctor/medical-records');
+      const recordsData = await get('/api/worker/doctor/medical-records') as { medicalRecords: MedicalRecord[] };
       setMedicalRecords(recordsData.medicalRecords || []);
     } catch (err) {
       setError('カルテデータの取得に失敗しました');

@@ -43,7 +43,7 @@ export default function PatientDashboard() {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [_unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -395,6 +395,22 @@ export default function PatientDashboard() {
                     <div className="ml-3">
                       <p className="font-medium text-gray-900">メッセージ</p>
                       <p className="text-sm text-gray-500">医師とのチャット</p>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+              <div className="mt-4">
+                <Link
+                  to="/patient/smartwatch"
+                  className="block border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                >
+                  <div className="flex items-center">
+                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <div className="ml-3">
+                      <p className="font-medium text-gray-900">スマートウォッチ・AI連携</p>
+                      <p className="text-sm text-gray-500">健康データとAIフィードバック</p>
                     </div>
                   </div>
                 </Link>

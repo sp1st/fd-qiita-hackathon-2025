@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '~/contexts/AuthContext'
 import { Loading } from '~/components/common/Loading'
-import { ErrorMessage } from '~/components/common/ErrorMessage'
+// import { ErrorMessage } from '~/components/common/ErrorMessage'
 
 interface Patient {
   id: number
@@ -39,10 +39,19 @@ export default function DoctorPatients() {
           throw new Error('Failed to fetch patients');
         }
 
-        const data = await response.json();
-        setPatients(data.patients);
+        const data: unknown = await response.json();
+        if (
+          typeof data === 'object' &&
+          data !== null &&
+          'patients' in data &&
+          Array.isArray((data as any).patients)
+        ) {
+          setPatients((data as { patients: Patient[] }).patients);
+        } else {
+          throw new Error('不正なデータ形式です');
+        }
       } catch (error) {
-        console.error('Error fetching patients:', error);
+        console.error('患者データの取得エラー:', error);
         setError('データの取得に失敗しました');
       } finally {
         setIsLoading(false);
@@ -137,12 +146,21 @@ export default function DoctorPatients() {
                           {getGenderLabel(patient.gender)}
                         </td>
                         <td className="relative whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                          <Link
-                            to={`/worker/doctor/patients/${patient.id}`}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            詳細を見る
-                          </Link>
+                          <div className="flex items-center justify-end space-x-2">
+                            <Link
+                              to={`/worker/doctor/patients/${patient.id}`}
+                              className="text-indigo-600 hover:text-indigo-900"
+                            >
+                              詳細を見る
+                            </Link>
+                            <span className="text-gray-300">|</span>
+                            <Link
+                              to={`/worker/doctor/patients/${patient.id}?tab=smartwatch`}
+                              className="text-green-600 hover:text-green-900"
+                            >
+                              スマートウォッチ
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     ))}

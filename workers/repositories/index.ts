@@ -8,6 +8,5 @@ export type {
   PatientRepository,
   WorkerRepository,
   MedicalRecordRepository,
-  PrescriptionRepository,
   VideoSessionRepository
 } from './interfaces'

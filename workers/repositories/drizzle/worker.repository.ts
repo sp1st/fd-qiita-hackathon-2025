@@ -108,6 +108,6 @@ export class DrizzleWorkerRepository implements WorkerRepository {
       )
       .all()
 
-    return availableDoctors
+    return availableDoctors.map(doctor => doctor.workers)
   }
 }

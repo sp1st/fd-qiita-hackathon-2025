@@ -14,4 +14,16 @@ export default defineConfig({
   define: {
     global: 'globalThis',
   },
+  optimizeDeps: {
+    exclude: ['@dnd-kit/core'],
+    force: true,
+  },
+  server: {
+    hmr: {
+      port: 24678,
+    },
+    watch: {
+      usePolling: true,
+    },
+  },
 });

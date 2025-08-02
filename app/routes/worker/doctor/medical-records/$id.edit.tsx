@@ -123,7 +123,8 @@ export default function MedicalRecordEdit() {
       }
 
       navigate(`/worker/doctor/dashboard?saved=true`);
-    } catch (_err) {
+    } catch (err) {
+      console.error('Error saving medical record:', err);
       setError('カルテの保存中にエラーが発生しました');
     }
   };

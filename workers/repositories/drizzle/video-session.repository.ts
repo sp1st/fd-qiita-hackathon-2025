@@ -22,7 +22,7 @@ export class DrizzleVideoSessionRepository implements VideoSessionRepository {
   }
 
   async findAll(options?: { limit?: number; offset?: number }): Promise<VideoSession[]> {
-    let query = this.db.select().from(videoSessions)
+    let query = this.db.select().from(videoSessions) as any
 
     if (options?.limit) {
       query = query.limit(options.limit)
@@ -106,10 +106,7 @@ export class DrizzleVideoSessionRepository implements VideoSessionRepository {
   async update(id: string, data: Partial<VideoSession>): Promise<VideoSession | null> {
     const result = await this.db
       .update(videoSessions)
-      .set({
-        ...data,
-        updatedAt: new Date()
-      })
+      .set(data)
       .where(eq(videoSessions.id, id))
       .returning()
       .all()

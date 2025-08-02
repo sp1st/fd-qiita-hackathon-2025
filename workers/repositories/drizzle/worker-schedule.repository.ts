@@ -22,10 +22,10 @@ export class DrizzleWorkerScheduleRepository implements WorkerScheduleRepository
   }
 
   async findAll(options?: FindOptions): Promise<WorkerSchedule[]> {
-    let query = this.db.select().from(workerSchedules)
+    let query = this.db.select().from(workerSchedules) as any
 
     if (options?.orderBy) {
-      const column = workerSchedules[options.orderBy as keyof typeof workerSchedules]
+      const column = workerSchedules[options.orderBy as keyof typeof workerSchedules] as any
       query = options.orderDirection === 'desc'
         ? query.orderBy(desc(column))
         : query.orderBy(asc(column))

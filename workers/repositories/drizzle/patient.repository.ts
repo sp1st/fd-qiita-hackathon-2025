@@ -22,7 +22,7 @@ export class DrizzlePatientRepository implements PatientRepository {
   }
 
   async findAll(options?: { limit?: number; offset?: number }): Promise<Patient[]> {
-    let query = this.db.select().from(patients)
+    let query = this.db.select().from(patients) as any
 
     if (options?.limit) {
       query = query.limit(options.limit)
@@ -91,7 +91,7 @@ export class DrizzlePatientRepository implements PatientRepository {
   async getPatientsByDoctorId(doctorId: number): Promise<Patient[]> {
     // まず、その医師が担当した予約を取得
     const doctorAppointments = await this.db
-      .select({ patientId: appointments.patientId })
+      .select()
       .from(appointments)
       .where(eq(appointments.assignedWorkerId, doctorId))
       .all()
@@ -120,7 +120,7 @@ export class DrizzlePatientRepository implements PatientRepository {
   async getPatientByIdAndDoctorId(patientId: number, doctorId: number): Promise<Patient | null> {
     // まず、その医師がその患者を担当したことがあるかチェック
     const appointmentExists = await this.db
-      .select({ id: appointments.id })
+      .select()
       .from(appointments)
       .where(
         and(

@@ -8,7 +8,7 @@
     "workers/**/*",
     "worker-configuration.d.ts",
     "types/**/*"
-  ],
+, "app/routes/patient/smartwatch.tsx"  ],
   "exclude": [
     "node_modules",
     "workers/seed-data-generator.ts",

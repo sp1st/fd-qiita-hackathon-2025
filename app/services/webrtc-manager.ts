@@ -926,6 +926,7 @@ export class WebRTCManager {
         }
       } catch (error) {
         // JSONでない場合は通常のメッセージとして処理
+        console.error('Data channel message error:', error);
         this.callbacks.onDataChannelMessage?.(event.data);
       }
     };
