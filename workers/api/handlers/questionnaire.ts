@@ -3,7 +3,7 @@ import type { Env } from '../../app'
 import { authMiddleware } from '../../auth/middleware'
 import type { JWTPayload } from '../../auth/jwt'
 import { DrizzleRepositoryFactory } from '../../repositories'
-import { initializeDatabase } from '../../app'
+// import { initializeDatabase } from '../../app'
 
 type Variables = { user: JWTPayload }
 
@@ -68,7 +68,7 @@ app.get('/:appointmentId', authMiddleware(), async (c) => {
       return c.json({ error: 'Patients only' }, 403)
     }
 
-    const factory = new DrizzleRepositoryFactory(c.env.DB)
+    const factory = new DrizzleRepositoryFactory(c.env.DB as any)
     const appointmentRepo = factory.createAppointmentRepository()
     const questionnaireRepo = factory.createQuestionnaireRepository()
 
@@ -129,7 +129,7 @@ app.post('/answer', authMiddleware(), async (c) => {
       return c.json({ error: '必須フィールドが不足しています' }, 400)
     }
 
-    const factory = new DrizzleRepositoryFactory(c.env.DB)
+    const factory = new DrizzleRepositoryFactory(c.env.DB as any)
     const appointmentRepo = factory.createAppointmentRepository()
     const questionnaireRepo = factory.createQuestionnaireRepository()
 
@@ -175,7 +175,7 @@ app.post('/complete', authMiddleware(), async (c) => {
       return c.json({ error: 'appointmentIdが必要です' }, 400)
     }
 
-    const factory = new DrizzleRepositoryFactory(c.env.DB)
+    const factory = new DrizzleRepositoryFactory(c.env.DB as any)
     const appointmentRepo = factory.createAppointmentRepository()
     const questionnaireRepo = factory.createQuestionnaireRepository()
 

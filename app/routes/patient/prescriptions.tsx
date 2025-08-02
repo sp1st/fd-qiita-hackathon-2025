@@ -1,36 +1,62 @@
-import { json } from '@react-router/node';
-import { useLoaderData, Link } from '@react-router/react';
-import type { Route } from './+types/prescriptions';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router';
+import { getAuthToken } from '../../utils/auth';
 
-export async function loader({ request }: Route.LoaderArgs) {
-  const apiBaseUrl = process.env.API_BASE_URL || '';
-  const patientToken = request.headers.get('cookie')?.match(/patientAccessToken=([^;]*)/)?.[1];
-  
-  if (!patientToken) {
-    throw new Response('Unauthorized', { status: 401 });
-  }
+export function meta() {
+  return [
+    { title: '処方箋履歴 - オンライン診療システム' },
+    { name: 'description', content: '患者の処方箋履歴' },
+  ];
+}
 
-  try {
-    const response = await fetch(`${apiBaseUrl}/api/patient/prescriptions`, {
-      headers: {
-        'Authorization': `Bearer ${patientToken}`
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch prescriptions');
-    }
-
-    const prescriptions = await response.json();
-    return json({ prescriptions });
-  } catch (error) {
-    console.error('Error fetching prescriptions:', error);
-    return json({ prescriptions: [] });
-  }
+interface Prescription {
+  id: number;
+  issuedAt: string;
+  doctorName: string;
+  status: string;
+  medications: Array<{
+    name: string;
+    quantity: string;
+    dosage: string;
+    instructions?: string;
+  }>;
+  pharmacyNotes?: string;
 }
 
 export default function PatientPrescriptions() {
-  const { prescriptions } = useLoaderData<typeof loader>();
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [_isLoading, setIsLoading] = useState(true);
+  const [_error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchPrescriptions = async () => {
+      const token = getAuthToken();
+      if (!token) {
+        setError('認証エラー: ログインしてください');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/patient/prescriptions', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json() as { prescriptions: Prescription[] };
+          setPrescriptions(data.prescriptions || []);
+        } else {
+          setError('処方箋の取得に失敗しました');
+        }
+      } catch (err) {
+        console.error('Error fetching prescriptions:', err);
+        setError('処方箋の取得中にエラーが発生しました');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPrescriptions();
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8">

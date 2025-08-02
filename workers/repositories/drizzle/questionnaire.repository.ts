@@ -21,7 +21,7 @@ export class DrizzleQuestionnaireRepository implements QuestionnaireRepository {
   }
 
   async findAll(options?: FindOptions) {
-    let query = this.db.select().from(questionnaires)
+    let query = this.db.select().from(questionnaires) as any
     
     if (options?.limit) {
       query = query.limit(options.limit)
@@ -38,7 +38,11 @@ export class DrizzleQuestionnaireRepository implements QuestionnaireRepository {
     const result = await this.db
       .insert(questionnaires)
       .values({
-        ...data,
+        appointmentId: data.appointmentId!,
+        questionsAnswers: data.questionsAnswers || '{}',
+        aiSummary: data.aiSummary || null,
+        urgencyLevel: data.urgencyLevel || null,
+        completedAt: data.completedAt || null,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -68,7 +72,7 @@ export class DrizzleQuestionnaireRepository implements QuestionnaireRepository {
       .where(eq(questionnaires.id, id))
       .run()
     
-    return result.meta.changes > 0
+    return 'meta' in result ? result.meta.changes > 0 : false
   }
 
   async findByAppointmentId(appointmentId: number) {
@@ -89,13 +93,13 @@ export class DrizzleQuestionnaireRepository implements QuestionnaireRepository {
       return null
     }
 
-    const currentAnswers = existing.answers ? JSON.parse(existing.answers) : {}
+    const currentAnswers = existing.questionsAnswers ? JSON.parse(existing.questionsAnswers as string) : {}
     const updatedAnswers = { ...currentAnswers, ...answers }
 
     const result = await this.db
       .update(questionnaires)
       .set({
-        answers: JSON.stringify(updatedAnswers),
+        questionsAnswers: JSON.stringify(updatedAnswers),
         updatedAt: new Date(),
       })
       .where(eq(questionnaires.id, id))
@@ -109,7 +113,6 @@ export class DrizzleQuestionnaireRepository implements QuestionnaireRepository {
     const result = await this.db
       .update(questionnaires)
       .set({
-        isCompleted: true,
         completedAt: new Date(),
         updatedAt: new Date(),
       })

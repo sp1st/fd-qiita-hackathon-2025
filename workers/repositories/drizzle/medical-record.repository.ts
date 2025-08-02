@@ -67,7 +67,7 @@ export class DrizzleMedicalRecordRepository implements MedicalRecordRepository {
       .where(eq(medicalRecords.id, id))
       .run()
     
-    return result.meta.changes > 0
+    return 'meta' in result ? result.meta.changes > 0 : false
   }
 
   async findByAppointmentId(appointmentId: number): Promise<MedicalRecord | null> {

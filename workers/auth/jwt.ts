@@ -66,7 +66,7 @@ export async function generateRefreshToken(
   email: string,
   userType: 'patient' | 'worker',
   role?: 'doctor' | 'operator' | 'admin',
-  secret?: string
+  _secret?: string
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
@@ -144,7 +144,7 @@ export async function verifyAccessToken(
  */
 export async function verifyRefreshToken(
   token: string,
-  secret?: string
+  _secret?: string
 ): Promise<{ sub: string; id: number; email: string; userType: 'patient' | 'worker'; role?: 'doctor' | 'operator' | 'admin' } | null> {
   try {
     const isValid = await jwt.verify(token, JWT_CONFIG.secret, {

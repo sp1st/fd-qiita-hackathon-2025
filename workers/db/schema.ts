@@ -31,11 +31,79 @@ export const AILSummarySchema = z.object({
   keyPoints: z.array(z.string()).optional(),
 });
 
+// スマートウォッチデータスキーマ
+export const SmartwatchDataSchema = z.object({
+  // 運動データ
+  exercise: z.object({
+    type: z.string().optional(), // 運動の種類
+    duration: z.number().optional(), // 運動時間（分）
+    frequency: z.number().optional(), // 頻度（週あたり）
+    intensity: z.string().optional(), // 強度（低、中、高）
+    caloriesBurned: z.number().optional(), // 消費カロリー
+  }).optional(),
+  // 睡眠データ
+  sleep: z.object({
+    duration: z.number().optional(), // 睡眠時間（時間）
+    quality: z.string().optional(), // 睡眠の質（1-5段階）
+    deepSleep: z.number().optional(), // 深い睡眠時間（分）
+    lightSleep: z.number().optional(), // 浅い睡眠時間（分）
+    remSleep: z.number().optional(), // REM睡眠時間（分）
+  }).optional(),
+  // 活動データ
+  activity: z.object({
+    steps: z.number().optional(), // 歩数
+    distance: z.number().optional(), // 距離（km）
+    activeMinutes: z.number().optional(), // アクティブ時間（分）
+    caloriesBurned: z.number().optional(), // 消費カロリー
+  }).optional(),
+  // バイタルデータ
+  vitals: z.object({
+    heartRate: z.number().optional(), // 心拍数
+    bloodPressure: z.object({
+      systolic: z.number().optional(),
+      diastolic: z.number().optional(),
+    }).optional(),
+    temperature: z.number().optional(), // 体温
+    oxygenSaturation: z.number().optional(), // 血中酸素飽和度
+  }).optional(),
+  // その他の指標
+  otherMetrics: z.object({
+    stressLevel: z.number().optional(), // ストレスレベル（1-10）
+    caloriesConsumed: z.number().optional(), // 摂取カロリー
+    weight: z.number().optional(), // 体重（kg）
+    bodyFatPercentage: z.number().optional(), // 体脂肪率（%）
+  }).optional(),
+});
+
+// 患者パーソナリティ分析スキーマ
+export const PatientPersonalitySchema = z.object({
+  personalityType: z.string().optional(), // パーソナリティタイプ
+  motivationFactors: z.array(z.string()).optional(), // モチベーション要因
+  communicationStyle: z.string().optional(), // コミュニケーションスタイル
+  goalOrientation: z.string().optional(), // 目標志向性
+  stressResponse: z.string().optional(), // ストレス反応
+  socialSupport: z.string().optional(), // 社会的サポート
+  healthBeliefs: z.array(z.string()).optional(), // 健康に関する信念
+  preferredFeedbackStyle: z.string().optional(), // 好みのフィードバックスタイル
+});
+
+// AIフィードバックスキーマ
+export const AIFeedbackSchema = z.object({
+  messageType: z.string(), // 'motivation', 'reminder', 'achievement', 'suggestion'
+  content: z.string(), // フィードバックメッセージ
+  tone: z.string(), // 'encouraging', 'informative', 'gentle', 'direct'
+  priority: z.string(), // 'low', 'medium', 'high'
+  targetMetrics: z.array(z.string()).optional(), // 対象となる指標
+});
+
 // TypeScript型エクスポート
 export type VitalSigns = z.infer<typeof VitalSignsSchema>;
 export type PrescriptionMedication = z.infer<typeof PrescriptionMedicationSchema>;
 export type Prescriptions = z.infer<typeof PrescriptionsSchema>;
 export type AISummary = z.infer<typeof AILSummarySchema>;
+export type SmartwatchData = z.infer<typeof SmartwatchDataSchema>;
+export type PatientPersonality = z.infer<typeof PatientPersonalitySchema>;
+export type AIFeedback = z.infer<typeof AIFeedbackSchema>;
 
 // 患者テーブル - 基準文書に合わせて修正
 export const patients = sqliteTable('patients', {
@@ -333,6 +401,71 @@ export const attachments = sqliteTable('attachments', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
 });
 
+// スマートウォッチデータテーブル
+export const smartwatchData = sqliteTable('smartwatch_data', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  patientId: integer('patient_id')
+    .notNull()
+    .references(() => patients.id),
+  deviceType: text('device_type').notNull(), // 'fitbit', 'apple_watch', 'garmin', 'other'
+  deviceId: text('device_id'), // デバイス固有ID
+  dataType: text('data_type').notNull(), // 'exercise', 'sleep', 'activity', 'vitals', 'comprehensive'
+  data: text('data', { mode: 'json' }).notNull(), // SmartwatchDataSchema形式
+  recordedAt: integer('recorded_at', { mode: 'timestamp' }).notNull(),
+  syncedAt: integer('synced_at', { mode: 'timestamp' }).notNull().defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
+});
+
+// 患者パーソナリティ分析テーブル
+export const patientPersonalities = sqliteTable('patient_personalities', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  patientId: integer('patient_id')
+    .notNull()
+    .unique()
+    .references(() => patients.id),
+  personalityData: text('personality_data', { mode: 'json' }).notNull(), // PatientPersonalitySchema形式
+  confidenceScore: integer('confidence_score'), // AI分析の信頼度（0-100）
+  lastUpdated: integer('last_updated', { mode: 'timestamp' }).notNull().defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
+});
+
+// AIフィードバックテーブル
+export const aiFeedbacks = sqliteTable('ai_feedbacks', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  patientId: integer('patient_id')
+    .notNull()
+    .references(() => patients.id),
+  feedbackData: text('feedback_data', { mode: 'json' }).notNull(), // AIFeedbackSchema形式
+  triggerType: text('trigger_type').notNull(), // 'daily', 'weekly', 'achievement', 'reminder', 'alert'
+  triggerData: text('trigger_data', { mode: 'json' }), // トリガーとなったデータ
+  isRead: integer('is_read', { mode: 'boolean' }).notNull().default(false),
+  isActioned: integer('is_actioned', { mode: 'boolean' }).notNull().default(false),
+  scheduledFor: integer('scheduled_for', { mode: 'timestamp' }), // 送信予定時刻
+  sentAt: integer('sent_at', { mode: 'timestamp' }), // 実際の送信時刻
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
+});
+
+// 患者の健康目標テーブル
+export const patientHealthGoals = sqliteTable('patient_health_goals', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  patientId: integer('patient_id')
+    .notNull()
+    .references(() => patients.id),
+  goalType: text('goal_type').notNull(), // 'exercise', 'sleep', 'weight', 'blood_pressure', 'steps'
+  targetValue: text('target_value').notNull(), // 目標値
+  currentValue: text('current_value'), // 現在値
+  unit: text('unit'), // 単位
+  timeframe: text('timeframe').notNull(), // 'daily', 'weekly', 'monthly'
+  status: text('status', {
+    enum: ['active', 'completed', 'paused', 'cancelled'],
+  }).notNull().default('active'),
+  startDate: integer('start_date', { mode: 'timestamp' }).notNull(),
+  targetDate: integer('target_date', { mode: 'timestamp' }),
+  completedAt: integer('completed_at', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().defaultNow(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().defaultNow(),
+});
+
 // Infer TypeScript types from the schema
 export type Patient = typeof patients.$inferSelect;
 export type Worker = typeof workers.$inferSelect;
@@ -346,3 +479,7 @@ export type VideoSession = typeof videoSessions.$inferSelect;
 export type SessionParticipant = typeof sessionParticipants.$inferSelect;
 export type SessionEvent = typeof sessionEvents.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
+export type SmartwatchDataRecord = typeof smartwatchData.$inferSelect;
+export type PatientPersonalityRecord = typeof patientPersonalities.$inferSelect;
+export type AIFeedbackRecord = typeof aiFeedbacks.$inferSelect;
+export type PatientHealthGoal = typeof patientHealthGoals.$inferSelect;

@@ -173,7 +173,7 @@ export function adminAuthMiddleware(_secret?: string) {
  * オプション認証ミドルウェア
  * トークンがある場合は検証するが、ない場合でもアクセスを許可
  */
-export function optionalAuthMiddleware(secret?: string) {
+export function optionalAuthMiddleware(_secret?: string) {
   return async (c: Context, next: Next) => {
     const authHeader = c.req.header('Authorization');
     const token = extractTokenFromHeader(authHeader);
@@ -193,7 +193,7 @@ export function optionalAuthMiddleware(secret?: string) {
  * 自分自身のリソースのみアクセス許可ミドルウェア
  * 患者が自分の情報のみアクセスできるように制限
  */
-export function selfOnlyMiddleware(resourceIdParam: string = 'id', secret?: string) {
+export function selfOnlyMiddleware(resourceIdParam: string = 'id', _secret?: string) {
   return async (c: Context, next: Next) => {
     // まず基本的な認証をチェック
     const authHeader = c.req.header('Authorization');

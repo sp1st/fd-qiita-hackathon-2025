@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '~/contexts/AuthContext'
 import { Loading } from '~/components/common/Loading'
-import { ErrorMessage } from '~/components/common/ErrorMessage'
+// import { ErrorMessage } from '~/components/common/ErrorMessage'
 
 interface Patient {
   id: number
@@ -39,10 +39,19 @@ export default function DoctorPatients() {
           throw new Error('Failed to fetch patients');
         }
 
-        const data = await response.json();
-        setPatients(data.patients);
+        const data: unknown = await response.json();
+        if (
+          typeof data === 'object' &&
+          data !== null &&
+          'patients' in data &&
+          Array.isArray((data as any).patients)
+        ) {
+          setPatients((data as { patients: Patient[] }).patients);
+        } else {
+          throw new Error('不正なデータ形式です');
+        }
       } catch (error) {
-        console.error('Error fetching patients:', error);
+        console.error('患者データの取得エラー:', error);
         setError('データの取得に失敗しました');
       } finally {
         setIsLoading(false);
