@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { drizzle } from 'drizzle-orm/d1';
 import { DrizzleRepositoryFactory } from '../../repositories';
 import { authMiddleware } from '../../auth/middleware';
 
@@ -107,7 +108,8 @@ operatorAppointmentHandlers.get('/', authMiddleware(), async (c: any) => {
 operatorAppointmentHandlers.put('/:id', authMiddleware(), async (c: any) => {
   const user = c.get('user');
   const appointmentId = parseInt(c.req.param('id'), 10);
-  const repoFactory = new DrizzleRepositoryFactory(c.env.DB);
+  const db = drizzle(c.env.DB);
+  const repoFactory = new DrizzleRepositoryFactory(db);
   const appointmentRepo = repoFactory.createAppointmentRepository();
 
   // オペレータまたは管理者のみアクセス可能
@@ -153,7 +155,8 @@ operatorAppointmentHandlers.put('/:id', authMiddleware(), async (c: any) => {
 operatorAppointmentHandlers.delete('/:id', authMiddleware(), async (c: any) => {
   const user = c.get('user');
   const appointmentId = parseInt(c.req.param('id'), 10);
-  const repoFactory = new DrizzleRepositoryFactory(c.env.DB);
+  const db = drizzle(c.env.DB);
+  const repoFactory = new DrizzleRepositoryFactory(db);
   const appointmentRepo = repoFactory.createAppointmentRepository();
 
   // オペレータまたは管理者のみアクセス可能

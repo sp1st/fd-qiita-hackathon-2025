@@ -1,4 +1,5 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
+import { drizzle } from 'drizzle-orm/d1';
 import { DrizzleRepositoryFactory } from '../../repositories';
 import { authMiddleware } from '../../auth/middleware';
 import { initializeDatabase } from '../../app';
@@ -60,7 +61,6 @@ doctorPatientHandlers.get('/', async (c: any) => {
       console.error('Database initialization failed');
       return c.json({ error: 'Database not available' }, 500);
     }
-
     const repoFactory = new DrizzleRepositoryFactory(db);
     const patientRepo = repoFactory.createPatientRepository();
 
@@ -78,8 +78,14 @@ doctorPatientHandlers.get('/', async (c: any) => {
 doctorPatientHandlers.get('/:id', authMiddleware(), async (c: any) => {
   try {
     const user = c.get('user');
-    const patientId = parseInt(c.req.param('id'), 10);
     
+    // ユーザーが存在し、IDが存在することを確認
+    if (!user || !user.id) {
+        return c.json({ error: 'User not authenticated or user ID missing' }, 401);
+    }
+    
+    const patientId = parseInt(c.req.param('id'), 10);
+
     if (!user) {
       return c.json({ error: 'No user found' }, 401);
     }
@@ -94,7 +100,6 @@ doctorPatientHandlers.get('/:id', authMiddleware(), async (c: any) => {
     if (!db) {
       return c.json({ error: 'Database not available' }, 500);
     }
-
     const repoFactory = new DrizzleRepositoryFactory(db);
     const patientRepo = repoFactory.createPatientRepository();
 
