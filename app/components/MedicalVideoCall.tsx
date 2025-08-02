@@ -3,6 +3,7 @@ import { CloudflareRealtimeVideo } from './CloudflareRealtimeVideo';
 import { PatientInfoPanel } from './PatientInfoPanel';
 import { DoctorChatPanel } from './chat/DoctorChatPanel';
 import { MedicalRecordPanel } from './MedicalRecordPanel';
+import { SmartwatchDataCompact } from './doctor/SmartwatchDataCompact';
 
 interface MedicalVideoCallProps {
   appointmentId: string;
@@ -22,7 +23,7 @@ export function MedicalVideoCall({
   const [consultationDuration, setConsultationDuration] = useState(0);
   const [connectionMetrics, setConnectionMetrics] = useState<any>(null);
   const [networkError, setNetworkError] = useState<string | null>(null);
-  const [patientInfo] = useState<{ name: string } | null>(null);
+  const [patientInfo] = useState<{ name: string; id: number } | null>(null);
 
   const handleTogglePanel = useCallback(() => {
     setIsPanelCollapsed(prev => !prev);
@@ -180,6 +181,19 @@ export function MedicalVideoCall({
                     defaultExpanded={true}
                     className="mb-4"
                   />
+
+                  {/* スマートウォッチデータパネル */}
+                  <div className="bg-white rounded-lg shadow border border-gray-200">
+                    <div className="px-4 py-3 border-b border-gray-200">
+                      <h4 className="text-sm font-medium text-gray-900">スマートウォッチデータ</h4>
+                    </div>
+                    <div className="p-4">
+                      <SmartwatchDataCompact
+                        patientId={patientInfo?.id || parseInt(appointmentId)}
+                        patientName={patientInfo?.name || '患者'}
+                      />
+                    </div>
+                  </div>
 
                   {/* チャットパネル */}
                   <DoctorChatPanel

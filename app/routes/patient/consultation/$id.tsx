@@ -7,7 +7,7 @@ export default function PatientConsultation() {
 
   const handleSessionEnd = () => {
     // セッション終了後、ダッシュボードに戻る
-    navigate('/patient');
+    navigate('/patient/dashboard');
   };
 
   if (!id) {

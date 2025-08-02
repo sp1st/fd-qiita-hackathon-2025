@@ -146,12 +146,21 @@ export default function DoctorPatients() {
                           {getGenderLabel(patient.gender)}
                         </td>
                         <td className="relative whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                          <Link
-                            to={`/worker/doctor/patients/${patient.id}`}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            詳細を見る
-                          </Link>
+                          <div className="flex items-center justify-end space-x-2">
+                            <Link
+                              to={`/worker/doctor/patients/${patient.id}`}
+                              className="text-indigo-600 hover:text-indigo-900"
+                            >
+                              詳細を見る
+                            </Link>
+                            <span className="text-gray-300">|</span>
+                            <Link
+                              to={`/worker/doctor/patients/${patient.id}?tab=smartwatch`}
+                              className="text-green-600 hover:text-green-900"
+                            >
+                              スマートウォッチ
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     ))}

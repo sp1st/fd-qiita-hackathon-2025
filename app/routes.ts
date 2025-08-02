@@ -17,6 +17,7 @@ export default [
     route('consultation/:id', 'routes/patient/consultation/$id.tsx'),
     route('messages', 'routes/patient/messages.tsx'),
     route('prescriptions', 'routes/patient.prescriptions.tsx'),
+    route('smartwatch', 'routes/patient/smartwatch.tsx'),
   ]),
 
   // 医療従事者向けルート
@@ -29,6 +30,7 @@ export default [
       route('patients', 'routes/worker/doctor/patients.tsx'),
       route('medical-records', 'routes/worker/doctor/medical-records.tsx'),
       route('medical-records/:id/edit', 'routes/worker/doctor/medical-records/$id.edit.tsx'),
+      route('patients/:id', 'routes/worker/doctor/patients/$id.tsx'),
     ]),
 
     // オペレータ向け
