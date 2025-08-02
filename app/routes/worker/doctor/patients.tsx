@@ -1,5 +1,9 @@
+import { useEffect, useState } from 'react'
 import { type LoaderFunctionArgs } from 'react-router'
-import { useLoaderData, Link } from 'react-router'
+import { Link } from 'react-router'
+import { Loading } from '~/components/common/Loading'
+import { useAuth } from '~/contexts/AuthContext'
+import { getAuthToken } from '~/utils/auth'
 
 interface Patient {
   id: number
@@ -10,38 +14,56 @@ interface Patient {
   gender: 'male' | 'female' | 'other' | null
 }
 
-interface LoaderData {
-  patients: Patient[]
-  user: { name: string; role: string }
-  error?: string
-}
-
-export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderData> {
-  // TODO: 認証チェックを実装
-  const user = { name: '山田太郎', role: 'doctor' }
-
-  try {
-    // APIから担当患者一覧を取得
-    const response = await fetch(`${new URL(request.url).origin}/api/worker/doctor/patients`, {
-      headers: {
-        'Authorization': 'Bearer dummy-token', // TODO: 実際の認証トークンを使用
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch patients')
-    }
-
-    const data: { patients: Patient[] } = await response.json()
-    return { patients: data.patients, user }
-  } catch (error) {
-    console.error('Error fetching patients:', error)
-    return { patients: [], user, error: 'データの取得に失敗しました' }
+export async function loader({ request: _request }: LoaderFunctionArgs) {
+  return {
+    needsClientLoad: true
   }
 }
 
 export default function DoctorPatients() {
-  const { patients, user, error } = useLoaderData<LoaderData>()
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [token, setToken] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const { user, isLoading } = useAuth();
+  
+  useEffect(() => {
+    // クライアントサイドでのみトークンを取得
+    const authToken = getAuthToken()
+    setToken(authToken)
+  }, [])
+
+  useEffect(() => {
+    if (!token) {
+      return // トークンがない場合は何もしない
+    }    
+    const fetchPatients = async () => {
+      try {
+        const response = await fetch('/api/worker/doctor/patients', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+        })
+        if (!response.ok) {
+          throw new Error('Failed to fetch patients')
+        }
+        const data: { patients: Patient[] } = await response.json()
+        setPatients(data.patients)
+      } catch (error) {
+        console.error('Error fetching patients:', error)
+        setPatients([])
+        setError('患者データの取得に失敗しました')
+      }
+    }
+    fetchPatients()
+  }, [token])
+
+  // 認証状態を確認中の場合はローディング表示
+  if (isLoading) {
+    return <Loading fullScreen message="認証状態を確認中..." />;
+  }
+
+  // ユーザー情報がない場合のフォールバック
+  const currentUser = user || { name: '山田太郎', role: 'doctor' };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) {return '未設定'}
@@ -63,7 +85,7 @@ export default function DoctorPatients() {
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-bold text-gray-900">担当患者一覧</h1>
           <p className="mt-2 text-sm text-gray-700">
-            {user.name}先生が担当している患者の一覧です。
+            {currentUser.name}先生が担当している患者の一覧です。
           </p>
         </div>
       </div>
