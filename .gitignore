@@ -75,3 +75,6 @@ tsconfig.cloudflare.tsbuildinfo
 
 # Cloudflare configuration files with sensitive data
 wrangler.jsonc
+
+workers/seed-data.ts
+drizzle.config.ts
