@@ -1,11 +1,20 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
+import { drizzle } from 'drizzle-orm/d1';
 import { DrizzleRepositoryFactory } from '../../repositories';
+import { authMiddleware } from '../../auth/middleware';
 
 const doctorPatientHandlers = new Hono();
 
-doctorPatientHandlers.get('/', async (c: any) => {
+doctorPatientHandlers.get('/', authMiddleware(), async (c: Context) => {
     const user = c.get('user');
-    const repoFactory = new DrizzleRepositoryFactory(c.env.DB);
+    
+    // ユーザーが存在し、IDが存在することを確認
+    if (!user || !user.id) {
+        return c.json({ error: 'User not authenticated or user ID missing' }, 401);
+    }
+    
+    const db = drizzle(c.env.DB);
+    const repoFactory = new DrizzleRepositoryFactory(db);
     const patientRepo = repoFactory.createPatientRepository();
 
     const patients = await patientRepo.getPatientsByDoctorId(user.id);
@@ -13,10 +22,17 @@ doctorPatientHandlers.get('/', async (c: any) => {
     return c.json({ patients });
 });
 
-doctorPatientHandlers.get('/:id', async (c: any) => {
+doctorPatientHandlers.get('/:id', authMiddleware(), async (c: Context) => {
     const user = c.get('user');
+    
+    // ユーザーが存在し、IDが存在することを確認
+    if (!user || !user.id) {
+        return c.json({ error: 'User not authenticated or user ID missing' }, 401);
+    }
+    
     const patientId = parseInt(c.req.param('id'), 10);
-    const repoFactory = new DrizzleRepositoryFactory(c.env.DB);
+    const db = drizzle(c.env.DB);
+    const repoFactory = new DrizzleRepositoryFactory(db);
     const patientRepo = repoFactory.createPatientRepository();
 
     const patient = await patientRepo.getPatientByIdAndDoctorId(patientId, user.id);
