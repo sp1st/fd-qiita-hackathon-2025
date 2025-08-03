@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { SmartwatchService } from '../services/smartwatch.service';
+import { OllamaService } from '../services/ollama.service';
 import { authMiddleware, getUser } from '../auth/middleware';
 import { SmartwatchDataSchema, PatientPersonalitySchema } from '../db/schema';
 import { initializeDatabase } from '../app';
@@ -317,6 +318,62 @@ smartwatchRouter.post('/dummy-data', async (c) => {
     );
 
     return c.json({ success: true, data: result });
+  } catch (error) {
+    console.error('ダミーデータ生成エラー:', error);
+    return c.json({ success: false, error: 'ダミーデータの生成に失敗しました' }, 500);
+  }
+});
+
+// AI要約・分析エンドポイント
+smartwatchRouter.post('/summary', async (c) => {
+  try {
+    const user = getUser(c);
+    if (!user) {
+      return c.json({ success: false, error: '認証が必要です' }, 401);
+    }
+
+    const body = await c.req.json();
+    const { patientId, data } = body;
+
+    if (!patientId || !data) {
+      return c.json({ success: false, error: '患者IDとデータが必要です' }, 400);
+    }
+
+    // AI分析を実行
+    const analysis = await OllamaService.analyzeSmartwatchData(data);
+
+    return c.json({ success: true, data: analysis });
+  } catch (error) {
+    console.error('AI分析エラー:', error);
+    return c.json({ success: false, error: 'AI分析に失敗しました' }, 500);
+  }
+});
+
+// 期間指定可能なダミーデータ取得
+smartwatchRouter.get('/weekly-dummy/:patientId', async (c) => {
+  try {
+    const user = getUser(c);
+    if (!user) {
+      return c.json({ success: false, error: '認証が必要です' }, 401);
+    }
+
+    const patientId = parseInt(c.req.param('patientId'));
+    if (isNaN(patientId)) {
+      return c.json({ success: false, error: '無効な患者IDです' }, 400);
+    }
+
+    // 期間パラメータを取得（デフォルト7日）
+    const daysParam = c.req.query('days');
+    const days = daysParam ? parseInt(daysParam) : 7;
+    
+    if (isNaN(days) || days < 1 || days > 365) {
+      return c.json({ success: false, error: '無効な期間です（1-365日の範囲で指定してください）' }, 400);
+    }
+
+    // 指定期間分のダミーデータを生成
+    const weeklyData = OllamaService.generateWeeklyDummyData(days);
+
+    return c.json({ success: true, data: weeklyData });
   } catch (error) {
     console.error('ダミーデータ生成エラー:', error);
     return c.json({ success: false, error: 'ダミーデータの生成に失敗しました' }, 500);

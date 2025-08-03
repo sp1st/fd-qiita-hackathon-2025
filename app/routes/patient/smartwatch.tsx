@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '~/contexts/AuthContext';
+import { SmartwatchDataDisplay } from '~/components/patient/SmartwatchDataDisplay';
 
 export function meta() {
   return [
@@ -83,32 +84,31 @@ export default function PatientSmartwatch() {
         </div>
 
         {/* タブコンテンツ */}
-        <div className="bg-white rounded-lg shadow">
-          {activeTab === 'data' && (
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4">スマートウォッチデータ</h2>
-              <p className="text-gray-600">
-                スマートウォッチからのデータ表示機能は現在開発中です。
-              </p>
-            </div>
-          )}
-          {activeTab === 'feedback' && (
+        {activeTab === 'data' && (
+          <SmartwatchDataDisplay patientId={user?.id || 1} />
+        )}
+        
+        {activeTab === 'feedback' && (
+          <div className="bg-white rounded-lg shadow">
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-4">AIフィードバック</h2>
               <p className="text-gray-600">
                 AIフィードバック機能は現在開発中です。
               </p>
             </div>
-          )}
-          {activeTab === 'goals' && (
+          </div>
+        )}
+        
+        {activeTab === 'goals' && (
+          <div className="bg-white rounded-lg shadow">
             <div className="p-6">
               <h2 className="text-xl font-semibold mb-4">健康目標</h2>
               <p className="text-gray-600">
                 健康目標管理機能は現在開発中です。
               </p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* 機能説明 */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
